@@ -36,7 +36,7 @@ const DESPESAS_LIVRES = [
 const BANCOS_DESPESA_DIVIDA = ["Cartão","Itaú","Mercado Pago","Nubank","Clear"];
 
 
-const DIVIDA_CATEGORIAS = ["Cartão de Crédito","Empréstimo","Financiamento","Parcelamento","Outros"];
+const DIVIDA_CATEGORIAS = ["Empréstimo","Financiamento","Parcelamento","Outros"];
 const $ = (id) => document.getElementById(id);
 
 function setOptions(selectEl, list) {

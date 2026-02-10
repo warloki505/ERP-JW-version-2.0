@@ -1,227 +1,339 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestor Financeiro - Dashboard</title>
-  <link rel="stylesheet" href="style.css" />
-</head>
+/* =====================================================
+   ERP DASHBOARD OFFLINE — KPI DÍVIDAS + LISTA ÚNICA BANCOS
+   Ajuste: remover lista fixa de categorias de dívidas
+   Dívida agora usa categoria livre (input texto)
+   ===================================================== */
 
-<body>
-  <!-- TOPO -->
-  <header class="topbar">
-    <div class="container topbar__row">
-      <h1>Gestor Financeiro</h1>
+// Chave do mês (YYYY-MM) — separa lançamentos por mês no localStorage
+const TX_KEY = `gf_erp_tx_${new Date().toISOString().slice(0, 7)}`;
 
-      <div class="topbar__actions">
-        <button class="btn btn--ghost" type="button"
-          onclick="window.location.href='dashboard.html'">
-          Início
-        </button>
+// Listas fixas
+const POUPANCA_CATEGORIAS = ["Reserva", "Investimento", "Aplicação"];
+const POUPANCA_BANCOS = ["Itaú", "Mercado Pago", "Nubank", "Clear"];
 
-        <button id="logoutBtn" class="btn btn--ghost" type="button">
-          Sair
-        </button>
-      </div>
-    </div>
-  </header>
+const RECEITA_CATEGORIAS = ["Salário", "Renda Extra", "Reembolso", "Rendimentos", "Serviços"];
+const RECEITA_BANCOS = ["Cartão", "Itaú", "Mercado Pago", "Nubank", "Clear"];
 
-  <main class="container">
+const DESPESAS_ESSENCIAIS = [
+  "ALIMENTAÇÃO ESSENCIAL",
+  "ASSINATURAS ESSENCIAIS",
+  "BEM-ESTAR ESSENCIAL",
+  "COMUNICAÇÃO",
+  "CUIDADO PESSOAL",
+  "EDUCAÇÃO",
+  "IMPOSTOS E TRIBUTOS",
+  "SAÚDE",
+  "TRANSPORTE",
+  "MORADIA E SERVIÇOS ESSENCIAIS"
+];
 
-    <!-- BLOCO 1 — RESUMO -->
-    <section class="card">
-      <h2>RESUMO</h2>
+const DESPESAS_LIVRES = [
+  "LAZER E ENTRETENIMENTO",
+  "ALIMENTAÇÃO FORA",
+  "VESTUÁRIO",
+  "VIAGENS E PASSEIOS",
+  "MIMOS E EXTRAS"
+];
 
-      <div class="kpi-grid">
-        <div class="kpi">
-          <div class="kpi__title">Despesas Essenciais</div>
-          <div id="kpiEssenciais" class="kpi__value">R$ 0,00</div>
-        </div>
+// ✅ Lista única de bancos (compartilhada entre DESPESAS e DÍVIDAS)
+const BANCOS_DESPESA_DIVIDA = ["Cartão", "Itaú", "Mercado Pago", "Nubank", "Clear"];
 
-        <div class="kpi">
-          <div class="kpi__title">Despesas Livres</div>
-          <div id="kpiLivres" class="kpi__value">R$ 0,00</div>
-        </div>
+// Helpers
+const $ = (id) => document.getElementById(id);
 
-        <div class="kpi">
-          <div class="kpi__title">Renda Total</div>
-          <div id="kpiRenda" class="kpi__value">R$ 0,00</div>
-        </div>
+function setOptions(selectEl, list) {
+  if (!selectEl) {
+    console.warn("[ERP] Select não encontrado:", selectEl);
+    return;
+  }
+  selectEl.innerHTML = `<option value="">Selecione</option>`;
+  list.forEach((v) => {
+    const o = document.createElement("option");
+    o.value = v;
+    o.textContent = v;
+    selectEl.appendChild(o);
+  });
+}
 
-        <div class="kpi">
-          <div class="kpi__title">Poupança Total</div>
-          <div id="kpiPoupanca" class="kpi__value">R$ 0,00</div>
-        </div>
+function brl(v) {
+  return (Number(v) || 0).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
+}
 
-        
-        <div class="kpi">
-          <div class="kpi__title">Dívidas</div>
-          <div id="kpiDividas" class="kpi__value">R$ 0,00</div>
-        </div>
+function loadTx() {
+  try {
+    return JSON.parse(localStorage.getItem(TX_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
 
-        <div class="kpi kpi--highlight">
-          <div class="kpi__title">Saldo a Distribuir</div>
-          <div id="kpiSaldoDistribuir" class="kpi__value">R$ 0,00</div>
-          <div class="kpi__hint">valor ainda não comprometido</div>
-        </div>
-      </div>
-    </section>
+function saveTx(list) {
+  localStorage.setItem(TX_KEY, JSON.stringify(list));
+}
 
-    <!-- BLOCO 2 — LANÇAMENTOS -->
-    <section class="grid-4">
+function formatCategoria(t) {
+  if (t.tipo === "divida") return `Dívida — ${t.categoria || "-"}`;
+  if (t.tipo === "despesa") {
+    const st =
+      t.subtipo === "essencial"
+        ? "Essencial"
+        : t.subtipo === "livre"
+        ? "Livre"
+        : "-";
+    return `Despesa (${st}) — ${t.categoria || "-"}`;
+  }
+  if (t.tipo === "poupanca") return `Poupança — ${t.categoria || "-"}`;
+  if (t.tipo === "receita") return `Receita — ${t.categoria || "-"}`;
+  return t.categoria || "-";
+}
 
-      <!-- POUPANÇA -->
-      <section class="card">
-        <h3>POUPANÇA</h3>
-        <form id="formPoupanca" class="form">
-          <label>Data</label>
-          <input type="date" name="data" required />
+function calcularResumo(list) {
+  let renda = 0,
+    poup = 0,
+    ess = 0,
+    liv = 0,
+    dividas = 0;
 
-          <label>Valor</label>
-          <input type="number" name="valor" step="0.01" min="0.01" required />
+  for (const t of list) {
+    const v = Number(t.valor) || 0;
 
-          <label>Categoria</label>
-          <select name="categoria" id="poupancaCategoria" required></select>
+    if (t.tipo === "receita") renda += v;
+    if (t.tipo === "poupanca") poup += v;
+    if (t.tipo === "despesa" && t.subtipo === "essencial") ess += v;
+    if (t.tipo === "despesa" && t.subtipo === "livre") liv += v;
+    if (t.tipo === "divida") dividas += v;
+  }
 
-          <label>Banco</label>
-          <select name="banco" id="poupancaBanco" required></select>
+  // ✅ Saldo a Distribuir = renda - (poupança + despesas essenciais + despesas livres + dívidas)
+  const saldo = renda - poup - ess - liv - dividas;
 
-          <label>Descrição (opcional)</label>
-          <input type="text" name="descricao" placeholder="Opcional" />
+  return { renda, poup, ess, liv, dividas, saldo };
+}
 
-          <button class="btn btn--primary" type="submit">
-            + Adicionar Poupança
-          </button>
-        </form>
-      </section>
+function render(tx) {
+  const r = calcularResumo(tx);
 
-      <!-- RECEITA -->
-      <section class="card">
-        <h3>RECEITA</h3>
-        <form id="formReceita" class="form">
-          <label>Data</label>
-          <input type="date" name="data" required />
+  // KPIs
+  const kR = $("kpiRenda");
+  const kP = $("kpiPoupanca");
+  const kE = $("kpiEssenciais");
+  const kL = $("kpiLivres");
+  const kD = $("kpiDividas");
+  const kS = $("kpiSaldoDistribuir");
 
-          <label>Valor</label>
-          <input type="number" name="valor" step="0.01" min="0.01" required />
+  if (kR) kR.textContent = brl(r.renda);
+  if (kP) kP.textContent = brl(r.poup);
+  if (kE) kE.textContent = brl(r.ess);
+  if (kL) kL.textContent = brl(r.liv);
+  if (kD) kD.textContent = brl(r.dividas);
+  if (kS) kS.textContent = brl(r.saldo);
 
-          <label>Categoria</label>
-          <select name="categoria" id="receitaCategoria" required></select>
+  // Tabela
+  const tbody = $("txTbody");
+  if (!tbody) return;
 
-          <label>Banco</label>
-          <select name="banco" id="receitaBanco" required></select>
+  tbody.innerHTML = "";
+  if (tx.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5">Nenhum lançamento.</td></tr>`;
+    return;
+  }
 
-          <label>Descrição (opcional)</label>
-          <input type="text" name="descricao" placeholder="Opcional" />
+  tx.forEach((t, idx) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${t.data || "-"}</td>
+      <td>${brl(t.valor)}</td>
+      <td>${formatCategoria(t)}</td>
+      <td>${t.banco || "-"}</td>
+      <td><button class="btn-mini" data-del="${idx}">Remover</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
 
-          <button class="btn btn--primary" type="submit">
-            + Adicionar Receita
-          </button>
-        </form>
-      </section>
+  // Remoção (delegação)
+  tbody.onclick = (e) => {
+    const btn = e.target.closest("[data-del]");
+    if (!btn) return;
 
-      <!-- DESPESAS -->
-      <section class="card">
-        <h3>DESPESAS</h3>
-        <form id="formDespesa" class="form">
-          <label>Data</label>
-          <input type="date" name="data" required />
+    const i = Number(btn.getAttribute("data-del"));
+    if (!Number.isFinite(i)) return;
 
-          <label>Valor</label>
-          <input type="number" name="valor" step="0.01" min="0.01" required />
+    if (!confirm("Confirmar exclusão deste lançamento?")) return;
 
-          <label>Tipo de despesa</label>
-          <select name="subtipo" id="despesaSubtipo" required>
-            <option value="">Selecione</option>
-            <option value="essencial">Despesa Essencial</option>
-            <option value="livre">Despesa Livre</option>
-          </select>
+    tx.splice(i, 1);
+    saveTx(tx);
+    render(tx);
+  };
+}
 
-          <label>Categoria</label>
-          <select name="categoria" id="despesaCategoria" required>
-            <option value="">Selecione</option>
-          </select>
+window.addEventListener("DOMContentLoaded", () => {
+  // 1) Popular selects fixos
+  setOptions($("poupancaCategoria"), POUPANCA_CATEGORIAS);
+  setOptions($("poupancaBanco"), POUPANCA_BANCOS);
 
-          <label>Banco</label>
-          <select name="banco" id="despesaBanco" required></select>
+  setOptions($("receitaCategoria"), RECEITA_CATEGORIAS);
+  setOptions($("receitaBanco"), RECEITA_BANCOS);
 
-          <label>Descrição (opcional)</label>
-          <input type="text" name="descricao" placeholder="Opcional" />
+  // Despesas: banco compartilhado
+  setOptions($("despesaBanco"), BANCOS_DESPESA_DIVIDA);
 
-          <button class="btn btn--primary" type="submit">
-            + Adicionar Despesa
-          </button>
-        </form>
-      </section>
+  // Dívidas: banco compartilhado (mesma lista das despesas)
+  setOptions($("dividaBanco"), BANCOS_DESPESA_DIVIDA);
 
+  // Categorias de despesa dependem do subtipo
+  const despSub = $("despesaSubtipo");
+  const despCat = $("despesaCategoria");
 
-      <!-- DÍVIDAS -->
-      <section class="card">
-        <h3>DÍVIDAS</h3>
-        <form id="formDivida" class="form">
-          <label>Data</label>
-          <input type="date" name="data" required />
+  if (despCat) despCat.innerHTML = `<option value="">Selecione</option>`;
 
-          <label>Valor</label>
-          <input type="number" name="valor" step="0.01" min="0.01" required />
+  if (despSub) {
+    despSub.addEventListener("change", () => {
+      if (!despCat) return;
 
-          <label>Categoria</label>
-          <select name="categoria" id="dividaCategoria" required></select>
+      if (despSub.value === "essencial") setOptions(despCat, DESPESAS_ESSENCIAIS);
+      else if (despSub.value === "livre") setOptions(despCat, DESPESAS_LIVRES);
+      else despCat.innerHTML = `<option value="">Selecione</option>`;
+    });
+  }
 
-          <label>Banco</label>
-          <select name="banco" id="dividaBanco" required></select>
+  // 2) Carregar dados do mês
+  const tx = loadTx();
 
-          <label>Descrição (opcional)</label>
-          <input type="text" name="descricao" placeholder="Opcional" />
+  // 3) Forms
+  const fP = $("formPoupanca");
+  const fR = $("formReceita");
+  const fD = $("formDespesa");
+  const fV = $("formDivida");
 
-          <button class="btn btn--primary" type="submit">
-            + Adicionar Dívida
-          </button>
-        </form>
-      </section>
+  // POUPANÇA
+  if (fP)
+    fP.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const data = fP.querySelector("[name='data']")?.value;
+      const valor = fP.querySelector("[name='valor']")?.value;
+      const categoria = fP.querySelector("[name='categoria']")?.value;
+      const banco = fP.querySelector("[name='banco']")?.value;
+      const descricao = fP.querySelector("[name='descricao']")?.value?.trim() || "";
 
-    </section>
+      if (!data || !valor || !categoria || !banco) return alert("Preencha todos os campos.");
 
-    <!-- BLOCO 3 — TABELA -->
-    <section class="card">
-      <h2>TABELA DE LANÇAMENTOS</h2>
+      tx.push({
+        tipo: "poupanca",
+        data,
+        valor: Number(valor),
+        categoria,
+        banco,
+        descricao
+      });
 
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Data</th>
-              <th>Valor</th>
-              <th>Categoria</th>
-              <th>Banco</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody id="txTbody"></tbody>
-        </table>
-      </div>
-    </section>
+      saveTx(tx);
+      fP.reset();
+      setOptions($("poupancaCategoria"), POUPANCA_CATEGORIAS);
+      setOptions($("poupancaBanco"), POUPANCA_BANCOS);
+      render(tx);
+    });
 
-    <!-- BLOCO 4 — AÇÕES -->
-    <section class="footer-actions">
-      <button class="btn btn--primary"
-        onclick="window.scrollTo({ top: 0, behavior: 'smooth' })">
-        Voltar para o início
-      </button>
+  // RECEITA
+  if (fR)
+    fR.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const data = fR.querySelector("[name='data']")?.value;
+      const valor = fR.querySelector("[name='valor']")?.value;
+      const categoria = fR.querySelector("[name='categoria']")?.value;
+      const banco = fR.querySelector("[name='banco']")?.value;
+      const descricao = fR.querySelector("[name='descricao']")?.value?.trim() || "";
 
-      <button class="btn btn--ghost" onclick="window.print()">
-        Exportar Relatório (PDF)
-      </button>
+      if (!data || !valor || !categoria || !banco) return alert("Preencha todos os campos.");
 
-      <button class="btn btn--ghost"
-        onclick="window.location.href='charts.html'">
-        Exportar Gráficos
-      </button>
-    </section>
+      tx.push({
+        tipo: "receita",
+        data,
+        valor: Number(valor),
+        categoria,
+        banco,
+        descricao
+      });
 
-  </main>
+      saveTx(tx);
+      fR.reset();
+      setOptions($("receitaCategoria"), RECEITA_CATEGORIAS);
+      setOptions($("receitaBanco"), RECEITA_BANCOS);
+      render(tx);
+    });
 
-  <!-- ✅ JS NA RAIZ -->
-  <script src="dashboard.js"></script>
-</body>
-</html>
+  // DESPESA
+  if (fD)
+    fD.addEventListener("submit", (e) => {
+      e.preventDefault();
+
+      const data = fD.querySelector("[name='data']")?.value;
+      const valor = fD.querySelector("[name='valor']")?.value;
+      const subtipo = fD.querySelector("[name='subtipo']")?.value || $("despesaSubtipo")?.value;
+      const categoria = fD.querySelector("[name='categoria']")?.value || $("despesaCategoria")?.value;
+      const banco = fD.querySelector("[name='banco']")?.value || $("despesaBanco")?.value;
+      const descricao = fD.querySelector("[name='descricao']")?.value?.trim() || "";
+
+      if (!data || !valor || !subtipo || !categoria || !banco) return alert("Preencha todos os campos.");
+
+      tx.push({
+        tipo: "despesa",
+        subtipo,
+        data,
+        valor: Number(valor),
+        categoria,
+        banco,
+        descricao
+      });
+
+      saveTx(tx);
+      fD.reset();
+      if (despCat) despCat.innerHTML = `<option value="">Selecione</option>`;
+      setOptions($("despesaBanco"), BANCOS_DESPESA_DIVIDA);
+      render(tx);
+    });
+
+  // ✅ DÍVIDA (categoria livre via input texto)
+  if (fV)
+    fV.addEventListener("submit", (e) => {
+      e.preventDefault();
+
+      const data = fV.querySelector("[name='data']")?.value;
+      const valor = fV.querySelector("[name='valor']")?.value;
+
+      // categoria vem do input (texto)
+      const categoria =
+        fV.querySelector("[name='categoria']")?.value?.trim() ||
+        $("dividaCategoria")?.value?.trim();
+
+      const banco =
+        fV.querySelector("[name='banco']")?.value ||
+        $("dividaBanco")?.value;
+
+      const descricao = fV.querySelector("[name='descricao']")?.value?.trim() || "";
+
+      if (!data || !valor || !categoria || !banco) return alert("Preencha todos os campos.");
+
+      tx.push({
+        tipo: "divida",
+        data,
+        valor: Number(valor),
+        categoria,
+        banco,
+        descricao
+      });
+
+      saveTx(tx);
+      fV.reset();
+
+      // repopula apenas o banco (categoria é input livre)
+      setOptions($("dividaBanco"), BANCOS_DESPESA_DIVIDA);
+
+      render(tx);
+    });
+
+  // 4) Render inicial
+  render(tx);
+});

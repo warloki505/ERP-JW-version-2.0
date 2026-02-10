@@ -28,34 +28,70 @@
 
   <main class="container">
 
-    <!-- RESUMO -->
+    <!-- BLOCO 1 — RESUMO -->
     <section class="card">
       <h2>RESUMO</h2>
+
       <div class="kpi-grid">
-        <div class="kpi"><div class="kpi__title">Despesas Essenciais</div><div id="kpiEssenciais">R$ 0,00</div></div>
-        <div class="kpi"><div class="kpi__title">Despesas Livres</div><div id="kpiLivres">R$ 0,00</div></div>
-        <div class="kpi"><div class="kpi__title">Renda Total</div><div id="kpiRenda">R$ 0,00</div></div>
-        <div class="kpi"><div class="kpi__title">Poupança Total</div><div id="kpiPoupanca">R$ 0,00</div></div>
-        <div class="kpi"><div class="kpi__title">Dívidas</div><div id="kpiDividas">R$ 0,00</div></div>
+        <div class="kpi">
+          <div class="kpi__title">Despesas Essenciais</div>
+          <div id="kpiEssenciais" class="kpi__value">R$ 0,00</div>
+        </div>
+
+        <div class="kpi">
+          <div class="kpi__title">Despesas Livres</div>
+          <div id="kpiLivres" class="kpi__value">R$ 0,00</div>
+        </div>
+
+        <div class="kpi">
+          <div class="kpi__title">Renda Total</div>
+          <div id="kpiRenda" class="kpi__value">R$ 0,00</div>
+        </div>
+
+        <div class="kpi">
+          <div class="kpi__title">Poupança Total</div>
+          <div id="kpiPoupanca" class="kpi__value">R$ 0,00</div>
+        </div>
+
+        
+        <div class="kpi">
+          <div class="kpi__title">Dívidas</div>
+          <div id="kpiDividas" class="kpi__value">R$ 0,00</div>
+        </div>
+
         <div class="kpi kpi--highlight">
           <div class="kpi__title">Saldo a Distribuir</div>
-          <div id="kpiSaldoDistribuir">R$ 0,00</div>
+          <div id="kpiSaldoDistribuir" class="kpi__value">R$ 0,00</div>
+          <div class="kpi__hint">valor ainda não comprometido</div>
         </div>
       </div>
     </section>
 
-    <!-- LANÇAMENTOS -->
+    <!-- BLOCO 2 — LANÇAMENTOS -->
     <section class="grid-4">
 
       <!-- POUPANÇA -->
       <section class="card">
         <h3>POUPANÇA</h3>
         <form id="formPoupanca" class="form">
+          <label>Data</label>
           <input type="date" name="data" required />
+
+          <label>Valor</label>
           <input type="number" name="valor" step="0.01" min="0.01" required />
+
+          <label>Categoria</label>
           <select name="categoria" id="poupancaCategoria" required></select>
+
+          <label>Banco</label>
           <select name="banco" id="poupancaBanco" required></select>
-          <button type="submit">+ Adicionar</button>
+
+          <label>Descrição (opcional)</label>
+          <input type="text" name="descricao" placeholder="Opcional" />
+
+          <button class="btn btn--primary" type="submit">
+            + Adicionar Poupança
+          </button>
         </form>
       </section>
 
@@ -63,63 +99,129 @@
       <section class="card">
         <h3>RECEITA</h3>
         <form id="formReceita" class="form">
+          <label>Data</label>
           <input type="date" name="data" required />
+
+          <label>Valor</label>
           <input type="number" name="valor" step="0.01" min="0.01" required />
+
+          <label>Categoria</label>
           <select name="categoria" id="receitaCategoria" required></select>
+
+          <label>Banco</label>
           <select name="banco" id="receitaBanco" required></select>
-          <button type="submit">+ Adicionar</button>
+
+          <label>Descrição (opcional)</label>
+          <input type="text" name="descricao" placeholder="Opcional" />
+
+          <button class="btn btn--primary" type="submit">
+            + Adicionar Receita
+          </button>
         </form>
       </section>
 
-      <!-- DESPESA -->
+      <!-- DESPESAS -->
       <section class="card">
-        <h3>DESPESA</h3>
+        <h3>DESPESAS</h3>
         <form id="formDespesa" class="form">
+          <label>Data</label>
           <input type="date" name="data" required />
+
+          <label>Valor</label>
           <input type="number" name="valor" step="0.01" min="0.01" required />
+
+          <label>Tipo de despesa</label>
           <select name="subtipo" id="despesaSubtipo" required>
             <option value="">Selecione</option>
-            <option value="essencial">Essencial</option>
-            <option value="livre">Livre</option>
+            <option value="essencial">Despesa Essencial</option>
+            <option value="livre">Despesa Livre</option>
           </select>
-          <select name="categoria" id="despesaCategoria" required></select>
+
+          <label>Categoria</label>
+          <select name="categoria" id="despesaCategoria" required>
+            <option value="">Selecione</option>
+          </select>
+
+          <label>Banco</label>
           <select name="banco" id="despesaBanco" required></select>
-          <button type="submit">+ Adicionar</button>
+
+          <label>Descrição (opcional)</label>
+          <input type="text" name="descricao" placeholder="Opcional" />
+
+          <button class="btn btn--primary" type="submit">
+            + Adicionar Despesa
+          </button>
         </form>
       </section>
 
-      <!-- DÍVIDA -->
+
+      <!-- DÍVIDAS -->
       <section class="card">
-        <h3>DÍVIDA</h3>
+        <h3>DÍVIDAS</h3>
         <form id="formDivida" class="form">
+          <label>Data</label>
           <input type="date" name="data" required />
+
+          <label>Valor</label>
           <input type="number" name="valor" step="0.01" min="0.01" required />
+
+          <label>Categoria</label>
           <select name="categoria" id="dividaCategoria" required></select>
+
+          <label>Banco</label>
           <select name="banco" id="dividaBanco" required></select>
-          <button type="submit">+ Adicionar</button>
+
+          <label>Descrição (opcional)</label>
+          <input type="text" name="descricao" placeholder="Opcional" />
+
+          <button class="btn btn--primary" type="submit">
+            + Adicionar Dívida
+          </button>
         </form>
       </section>
 
     </section>
 
-    <!-- TABELA -->
+    <!-- BLOCO 3 — TABELA -->
     <section class="card">
-      <table>
-        <thead>
-          <tr>
-            <th>Data</th>
-            <th>Valor</th>
-            <th>Categoria</th>
-            <th>Banco</th>
-            <th>Ação</th>
-          </tr>
-        </thead>
-        <tbody id="txTbody"></tbody>
-      </table>
+      <h2>TABELA DE LANÇAMENTOS</h2>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Valor</th>
+              <th>Categoria</th>
+              <th>Banco</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="txTbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- BLOCO 4 — AÇÕES -->
+    <section class="footer-actions">
+      <button class="btn btn--primary"
+        onclick="window.scrollTo({ top: 0, behavior: 'smooth' })">
+        Voltar para o início
+      </button>
+
+      <button class="btn btn--ghost" onclick="window.print()">
+        Exportar Relatório (PDF)
+      </button>
+
+      <button class="btn btn--ghost"
+        onclick="window.location.href='charts.html'">
+        Exportar Gráficos
+      </button>
     </section>
 
   </main>
 
+  <!-- ✅ JS NA RAIZ -->
   <script src="dashboard.js"></script>
 </body>
 </html>

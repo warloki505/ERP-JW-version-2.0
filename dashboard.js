@@ -1,6 +1,10 @@
 /* =====================================================
    ERP DASHBOARD OFFLINE — FIX LISTAS (CATEGORIA/BANCO)
-   Blindado contra IDs ausentes
+   Ajustes aplicados:
+   - KPI Dívidas (soma tipo "divida")
+   - Dívidas subtrai do Saldo a Distribuir
+   - Bancos de Dívidas = mesma lista de Bancos de Despesas
+   - Remove lista fixa de categoria de dívidas (categoria livre - input)
    ===================================================== */
 
 const TX_KEY = `gf_erp_tx_${new Date().toISOString().slice(0,7)}`;
@@ -32,11 +36,9 @@ const DESPESAS_LIVRES = [
   "MIMOS E EXTRAS"
 ];
 
-// Lista única de bancos (COMPARTILHADA) — usada em DESPESAS e DÍVIDAS
+// ✅ Lista única de bancos (COMPARTILHADA) — usada em DESPESAS e DÍVIDAS
 const BANCOS_DESPESA_DIVIDA = ["Cartão","Itaú","Mercado Pago","Nubank","Clear"];
 
-
-const DIVIDA_CATEGORIAS = ["Cartão de Crédito","Empréstimo","Financiamento","Parcelamento","Outros"];
 const $ = (id) => document.getElementById(id);
 
 function setOptions(selectEl, list) {
@@ -148,11 +150,9 @@ window.addEventListener("DOMContentLoaded", () => {
   setOptions($("receitaCategoria"), RECEITA_CATEGORIAS);
   setOptions($("receitaBanco"), RECEITA_BANCOS);
 
+  // Bancos (lista única compartilhada)
   setOptions($("despesaBanco"), BANCOS_DESPESA_DIVIDA);
-
-  // Dívidas (usa a MESMA lista de bancos das Despesas)
   setOptions($("dividaBanco"), BANCOS_DESPESA_DIVIDA);
-  setOptions($("dividaCategoria"), DIVIDA_CATEGORIAS);
 
   const despSub = $("despesaSubtipo");
   const despCat = $("despesaCategoria");
@@ -220,29 +220,33 @@ window.addEventListener("DOMContentLoaded", () => {
     fD.reset();
     if (despCat) despCat.innerHTML = `<option value="">Selecione</option>`;
     setOptions($("despesaBanco"), BANCOS_DESPESA_DIVIDA);
-
-  // Dívidas (usa a MESMA lista de bancos das Despesas)
-  setOptions($("dividaBanco"), BANCOS_DESPESA_DIVIDA);
-  setOptions($("dividaCategoria"), DIVIDA_CATEGORIAS);
     render(tx);
   });
 
-  
+  // ✅ Dívida — categoria livre (input texto)
   if (fV) fV.addEventListener("submit", (e) => {
     e.preventDefault();
     const data = fV.querySelector("[name='data']")?.value;
     const valor = fV.querySelector("[name='valor']")?.value;
-    const categoria = fV.querySelector("[name='categoria']")?.value || $("dividaCategoria")?.value;
-    const banco = fV.querySelector("[name='banco']")?.value || $("dividaBanco")?.value;
+
+    const categoria =
+      (fV.querySelector("[name='categoria']")?.value || $("dividaCategoria")?.value || "").trim();
+
+    const banco =
+      fV.querySelector("[name='banco']")?.value || $("dividaBanco")?.value;
+
     if(!data || !valor || !categoria || !banco) return alert("Preencha todos os campos.");
+
     tx.push({ tipo:"divida", data, valor:Number(valor), categoria, banco });
     saveTx(tx);
     fV.reset();
-    setOptions($("dividaCategoria"), DIVIDA_CATEGORIAS);
+
+    // repopula só banco (categoria é input)
     setOptions($("dividaBanco"), BANCOS_DESPESA_DIVIDA);
+
     render(tx);
   });
 
-// 4) render inicial
+  // 4) render inicial
   render(tx);
 });
